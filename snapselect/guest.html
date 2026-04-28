@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnapSelect — Find Your Photos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/guest.css">
+</head>
+<body>
+
+<div class="grain"></div>
+
+<nav>
+  <div class="logo">SnapSelect <span>AI</span></div>
+  <div class="nav-right" id="guest-event-name"></div>
+</nav>
+
+<!-- LOADING -->
+<div id="loading-screen" class="screen active">
+  <div class="loading-inner">
+    <div class="loader-ring"></div>
+    <p class="loading-text">Loading gallery...</p>
+  </div>
+</div>
+
+<!-- FACE SCAN SCREEN -->
+<div id="face-screen" class="screen">
+  <div class="face-hero">
+    <div class="face-hero-text">
+      <p class="results-label">Guest Gallery</p>
+      <h1 id="guest-event-title">Wedding Photos</h1>
+      <p class="face-sub">Scan your face to find every photo you appear in — and download just yours.</p>
+    </div>
+
+    <div class="face-card">
+      <div class="face-tabs">
+        <button class="face-tab active" id="tab-camera" onclick="switchTab('camera')">📷 Use Camera</button>
+        <button class="face-tab" id="tab-upload" onclick="switchTab('upload')">🖼 Upload Selfie</button>
+      </div>
+
+      <!-- CAMERA TAB -->
+      <div id="camera-panel" class="face-panel active">
+        <div class="camera-frame" id="camera-frame">
+          <video id="video" autoplay muted playsinline></video>
+          <div class="face-oval"></div>
+          <canvas id="canvas" style="display:none"></canvas>
+        </div>
+        <button class="btn-gold full-width" id="capture-btn" onclick="captureAndMatch()">
+          Find My Photos
+        </button>
+        <button class="btn-ghost full-width" id="start-camera-btn" onclick="startCamera()">
+          Start Camera
+        </button>
+      </div>
+
+      <!-- UPLOAD TAB -->
+      <div id="upload-panel" class="face-panel">
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('selfie-input').click()">
+          <div class="upload-icon">📸</div>
+          <p>Click to upload a selfie</p>
+          <span>JPG or PNG, clear face photo</span>
+          <input type="file" id="selfie-input" accept="image/*" style="display:none" onchange="handleSelfieUpload(event)">
+        </div>
+        <img id="selfie-preview" class="selfie-preview hidden" />
+        <button class="btn-gold full-width hidden" id="match-upload-btn" onclick="matchFromUpload()">
+          Find My Photos
+        </button>
+      </div>
+
+      <div id="face-status" class="face-status hidden"></div>
+    </div>
+
+    <button class="skip-btn" onclick="showAllPhotos()">
+      Browse all photos without face scan →
+    </button>
+  </div>
+</div>
+
+<!-- ALL PHOTOS SCREEN (view only) -->
+<div id="all-photos-screen" class="screen">
+  <div class="gallery-header">
+    <div>
+      <p class="results-label">Full Gallery — View Only</p>
+      <h2 id="all-photos-title">All Event Photos</h2>
+      <p id="all-photo-count" class="photo-count"></p>
+    </div>
+    <button class="btn-outline" onclick="showFaceScreen()">← Find My Photos</button>
+  </div>
+  <div class="no-download-banner">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Viewing only — scan your face above to download your own photos
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all" onclick="filterAllPhotos('all')">All</button>
+    <div id="all-event-filters"></div>
+  </div>
+  <div id="all-photo-grid" class="photo-grid view-only"></div>
+</div>
+
+<!-- MY PHOTOS SCREEN (with download) -->
+<div id="my-photos-screen" class="screen">
+  <div class="gallery-header">
+    <div>
+      <p class="results-label">Your Photos</p>
+      <h2>Found <span id="my-photo-count">0</span> photos with you</h2>
+    </div>
+    <button class="btn-outline" onclick="showFaceScreen()">← Scan Again</button>
+  </div>
+  <div class="actions-bar">
+    <button class="btn-gold" onclick="downloadMyPhotos()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download My Photos (<span id="my-count-btn">0</span>)
+    </button>
+    <button class="btn-outline" onclick="showAllPhotos()">Browse All Photos</button>
+  </div>
+  <div id="my-photo-grid" class="photo-grid"></div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" class="lightbox hidden" onclick="closeLightbox()">
+  <button class="lb-close" onclick="closeLightbox()">✕</button>
+  <button class="lb-prev" onclick="event.stopPropagation();prevPhoto()">‹</button>
+  <img id="lb-img" src="" alt="">
+  <button class="lb-next" onclick="event.stopPropagation();nextPhoto()">›</button>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- ZIP PROGRESS -->
+<div id="zip-modal" class="modal hidden">
+  <div class="modal-box">
+    <h3>Preparing your photos</h3>
+    <div class="progress-bar"><div id="zip-progress" class="progress-fill"></div></div>
+    <p id="zip-status">Starting...</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- face-api.js for in-browser face recognition -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/guest.js"></script>
+
+</body>
+</html>
